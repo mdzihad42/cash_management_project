@@ -3,9 +3,14 @@
 {% block title %}Dashboard | CashFlow{% endblock %}
 
 {% block content %}
-<div class="dashboard-header" style="margin-bottom: 2rem;">
-    <h1>Overview</h1>
-    <p style="color: var(--text-muted);">Welcome back, {{ user.username }}. Here's your financial status.</p>
+<div class="dashboard-header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>Overview</h1>
+        <p style="color: var(--text-muted);">Welcome back, {{ user.username }}. Here's your financial status.</p>
+    </div>
+    <a href="{% url 'add_transaction' %}?type=INCOME&cat=SALARY" class="btn btn-primary" style="background: var(--accent); white-space: nowrap;">
+        💰 Add This Month's Salary
+    </a>
 </div>
 
 <!-- Primary Stats Grid -->
@@ -30,13 +35,11 @@
 
     <div class="glass-card">
         <div class="stat-header">
-            <span class="stat-title">Financial Health</span>
-            <div style="width: 40px; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
-                <div style="width: {{ health_score }}%; height: 100%; background: var(--accent);"></div>
-            </div>
+            <span class="stat-title">Safe Daily Limit</span>
+            <span style="font-size: 1.5rem;">📅</span>
         </div>
-        <div class="stat-value" style="color: var(--accent);">{{ health_score }}%</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Saving Rate: Excellent</div>
+        <div class="stat-value" style="color: var(--accent);">৳{{ safe_daily_limit }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Recommended for rest of month</div>
     </div>
 </div>
 
@@ -61,7 +64,7 @@
             <div style="margin-top: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                     <span style="font-size: 0.875rem;">Spent: ৳{{ total_expense }}</span>
-                    <span style="font-size: 0.875rem;">Target: ৳{{ user.profile.monthly_salary }}</span>
+                    <span style="font-size: 0.875rem;">Budget: ৳{{ effective_budget }}</span>
                 </div>
                 <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden;">
                     <div style="width: {{ budget_usage }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 1s ease-out;"></div>
@@ -92,7 +95,7 @@
 <div class="glass-card" style="margin-top: 2rem;">
     <div class="section-title">
         <h3>Recent Transactions</h3>
-        <a href="#" style="font-size: 0.875rem; color: var(--primary-light); text-decoration: none;">View All History</a>
+        <a href="{% url 'history' %}" style="font-size: 0.875rem; color: var(--primary-light); text-decoration: none;">View Full History</a>
     </div>
 
     <div class="transaction-list">

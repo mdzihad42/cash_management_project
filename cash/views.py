@@ -5,9 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views import View
 from .models import Transaction, Profile
-from django.db.models import Sum
+from django.db import models
+from django.db.models import Sum, Q
 from datetime import datetime
 from decimal import Decimal
+import calendar
 
 class RegisterView(View):
     def get(self, request):
@@ -54,11 +56,27 @@ def dashboard(request):
     total_income = transactions_month.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     total_expense = transactions_month.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     
+    # Dynamic Salary Budget
+    # Check for INCOME transactions in SALARY category for this month
+    monthly_salary_income = transactions_month.filter(transaction_type='INCOME', category='SALARY').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
+    
+    # Budget to use for progress bars: Salary if added, else fallback to Profile default
+    effective_budget = monthly_salary_income if monthly_salary_income > 0 else profile.monthly_salary
+
     # Today's Calculations
-    today = datetime.now().date()
+    now = datetime.now()
+    today = now.date()
     today_income = transactions.filter(date=today, transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     today_expense = transactions.filter(date=today, transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     
+    # Safe Daily Limit Calculation
+    _, num_days = calendar.monthrange(now.year, int(month))
+    remaining_days = num_days - now.day + 1 if int(month) == now.month else num_days
+    if remaining_days < 1: remaining_days = 1
+    
+    remaining_budget = effective_budget - total_expense
+    safe_daily_limit = max(0, remaining_budget / Decimal(remaining_days))
+
     # Financial Health Calculation
     saving_ratio = 0
     if total_income > 0:
@@ -68,8 +86,8 @@ def dashboard(request):
 
     # Budget Progress
     budget_usage = 0
-    if profile.monthly_salary > 0:
-        budget_usage = (total_expense / profile.monthly_salary) * 100
+    if effective_budget > 0:
+        budget_usage = (total_expense / effective_budget) * 100
 
     # Category Breakdown
     categories_data = transactions_month.filter(transaction_type='EXPENSE').values('category').annotate(total=Sum('amount')).order_by('-total')[:3]
@@ -83,10 +101,53 @@ def dashboard(request):
         'current_balance': profile.balance,
         'health_score': round(health_score, 1),
         'budget_usage': round(budget_usage, 1),
+        'effective_budget': effective_budget,
+        'safe_daily_limit': round(safe_daily_limit, 2),
         'categories_data': categories_data,
         'user': user
     }
     return render(request, 'cash/dashboard.html', context)
+
+@login_required
+def history(request):
+    user = request.user
+    from django.db.models.functions import ExtractMonth, ExtractYear
+    
+    # Raw grouping
+    logs = user.transactions.annotate(
+        m=ExtractMonth('date'),
+        y=ExtractYear('date')
+    ).values('y', 'm').annotate(
+        inc=Sum('amount', filter=Q(transaction_type='INCOME')),
+        exp=Sum('amount', filter=Q(transaction_type='EXPENSE')),
+        sal=Sum('amount', filter=Q(transaction_type='INCOME', category='SALARY'))
+    ).order_by('-y', '-m')
+
+    # Add calculated fields
+    history_data = []
+    for log in logs:
+        income = log['inc'] or Decimal(0)
+        expense = log['exp'] or Decimal(0)
+        salary = log['sal'] or Decimal(0)
+        savings = income - expense
+        rate = 0
+        if income > 0:
+            rate = (savings / income) * 100
+        
+        history_data.append({
+            'date': datetime(log['y'], log['m'], 1),
+            'income': income,
+            'expense': expense,
+            'salary': salary,
+            'savings': savings,
+            'rate': round(rate, 1)
+        })
+
+    context = {
+        'history_data': history_data,
+        'now': datetime.now()
+    }
+    return render(request, 'cash/history.html', context)
 
 @login_required
 def add_transaction(request):
