@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - CashFlow{% endblock %}
+
+{% block auth_content %}
+<div class="glass-card auth-card" style="width: 100%; max-width: 400px;">
+    <h2 style="margin-bottom: 0.5rem; text-align: center; font-family: 'Outfit';">Get Started</h2>
+    <p style="color: var(--text-muted); text-align: center; font-size: 0.875rem; margin-bottom: 2rem;">Create a professional account today</p>
+    <form method="POST">
+            {% csrf_token %}
+            {% for field in form %}
+            <div>
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <p style="color: var(--expense); font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 1rem;">{{ field.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Account</button>
+        </form>
+        <p style="margin-top: 1.5rem; text-align: center; color: var(--text-muted);">
+            Already have an account? <a href="{% url 'login' %}" style="color: var(--primary);">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

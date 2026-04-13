@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | CashFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <h1>Overview</h1>
+    <p style="color: var(--text-muted);">Welcome back, {{ user.username }}. Here's your financial status.</p>
+</div>
+
+<!-- Primary Stats Grid -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="glass-card">
+        <div class="stat-header">
+            <span class="stat-title">Total Balance</span>
+            <span style="font-size: 1.5rem;">💰</span>
+        </div>
+        <div class="stat-value">৳{{ current_balance }}</div>
+        <div style="font-size: 0.75rem; color: var(--accent); margin-top: 0.5rem;">↑ Available to spend</div>
+    </div>
+
+    <div class="glass-card">
+        <div class="stat-header">
+            <span class="stat-title">Today's Spent</span>
+            <span style="font-size: 1.5rem;">💸</span>
+        </div>
+        <div class="stat-value expense-text">৳{{ today_expense }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Resetting at 12:00 AM</div>
+    </div>
+
+    <div class="glass-card">
+        <div class="stat-header">
+            <span class="stat-title">Financial Health</span>
+            <div style="width: 40px; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
+                <div style="width: {{ health_score }}%; height: 100%; background: var(--accent);"></div>
+            </div>
+        </div>
+        <div class="stat-value" style="color: var(--accent);">{{ health_score }}%</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Saving Rate: Excellent</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+    <!-- Trends Section -->
+    <div class="glass-card">
+        <div class="section-title">
+            <h3>Monthly Insights</h3>
+            <div style="background: rgba(255,255,255,0.05); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;">
+                Current Month
+            </div>
+        </div>
+        <div style="height: 300px;">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Budget & Categories -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="glass-card">
+            <h3>Budget Progress</h3>
+            <div style="margin-top: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem;">Spent: ৳{{ total_expense }}</span>
+                    <span style="font-size: 0.875rem;">Target: ৳{{ user.profile.monthly_salary }}</span>
+                </div>
+                <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden;">
+                    <div style="width: {{ budget_usage }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 1s ease-out;"></div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
+                    You've used <strong>{{ budget_usage }}%</strong> of your target budget.
+                </p>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3>Top Categories</h3>
+            <div style="margin-top: 1rem;">
+                {% for cat in categories_data %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 0.875rem;">{{ cat.category|title }}</span>
+                    <span style="font-weight: 600;">৳{{ cat.total }}</span>
+                </div>
+                {% empty %}
+                <p style="color: var(--text-muted); font-size: 0.875rem; text-align: center;">No data yet</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="glass-card" style="margin-top: 2rem;">
+    <div class="section-title">
+        <h3>Recent Transactions</h3>
+        <a href="#" style="font-size: 0.875rem; color: var(--primary-light); text-decoration: none;">View All History</a>
+    </div>
+
+    <div class="transaction-list">
+        {% for t in transactions %}
+        <div class="transaction-row">
+            <div class="category-icon">
+                {% if t.category == 'FOOD' %}🍔{% elif t.category == 'TRANSPORT' %}🚗{% elif t.category == 'RENT' %}🏠{% elif t.category == 'SALARY' %}💰{% else %}📦{% endif %}
+            </div>
+            <div>
+                <div style="font-weight: 600;">{{ t.title }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.date }} • {{ t.location|default:"No Place" }}</div>
+            </div>
+            <div style="font-size: 0.875rem; color: var(--text-muted);">{{ t.category|title }}</div>
+            <div class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}" style="font-size: 1.1rem;">
+                {% if t.transaction_type == 'INCOME' %}+{% else %}-{% endif %}৳{{ t.amount }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Income', 'Expenses'],
+            datasets: [{
+                data: [{{ total_income }}, {{ total_expense }}],
+                backgroundColor: ['#6366f1', '#f43f5e'],
+                borderColor: 'transparent',
+                hoverOffset: 4,
+                cutout: '80%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
