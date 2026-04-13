@@ -176,9 +176,12 @@
                 <div style="font-weight: 600;">{{ t.title }}</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.date }} • {{ t.wallet.name|default:"Main Cash" }}</div>
             </div>
-            <div style="font-size: 0.875rem; color: var(--text-muted);">{{ t.category|title }}</div>
-            <div class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}" style="font-size: 1.1rem;">
+            <div class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}" style="font-size: 1.1rem; width: 120px; text-align: right;">
                 {% if t.transaction_type == 'INCOME' %}+{% else %}-{% endif %}৳{{ t.amount }}
+            </div>
+            <div style="margin-left: 1rem; display: flex; gap: 0.5rem;">
+                <a href="{% url 'edit_transaction' t.pk %}" style="text-decoration: none; font-size: 1rem;" title="Edit">✏️</a>
+                <a href="{% url 'delete_transaction' t.pk %}" style="text-decoration: none; font-size: 1rem;" title="Delete">🗑️</a>
             </div>
         </div>
         {% endfor %}

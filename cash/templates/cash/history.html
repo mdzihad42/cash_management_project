@@ -122,13 +122,14 @@
                         <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Account</th>
                         <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Category</th>
                         <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Amount</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for t in transactions_list %}
                     {% ifchanged t.date %}
                     <tr style="background: rgba(255,255,255,0.02);">
-                        <td colspan="5" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
+                        <td colspan="6" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span style="font-weight: 700; color: var(--primary-light); font-size: 0.9rem;">
                                     📅 {{ t.date|date:"l, d F Y" }}
@@ -153,6 +154,12 @@
                         <td style="padding: 1rem; font-size: 0.8125rem;">{{ t.category|title }}</td>
                         <td style="padding: 1rem;" class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}">
                             {% if t.transaction_type == 'INCOME' %}+{% else %}-{% endif %}৳{{ t.amount }}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <a href="{% url 'edit_transaction' t.pk %}" style="text-decoration: none; font-size: 1.1rem;" title="Edit">✏️</a>
+                                <a href="{% url 'delete_transaction' t.pk %}" style="text-decoration: none; font-size: 1.1rem;" title="Delete">🗑️</a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

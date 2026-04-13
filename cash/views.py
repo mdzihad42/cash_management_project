@@ -244,45 +244,45 @@ def history(request):
     }
     return render(request, 'cash/history.html', context)
 
+from .forms import UserUpdateForm, ProfileUpdateForm, TransactionForm
+
 @login_required
 def add_transaction(request):
-    user = request.user
     if request.method == 'POST':
-        title = request.POST.get('title')
-        amount = request.POST.get('amount')
-        t_type = request.POST.get('transaction_type')
-        category = request.POST.get('category')
-        description = request.POST.get('description')
-        location = request.POST.get('location')
-
-        wallet_id = request.POST.get('wallet')
-        wallet = user.wallets.get(id=wallet_id)
-
-        transaction = Transaction.objects.create(
-            user=user,
-            wallet=wallet,
-            title=title,
-            amount=amount,
-            transaction_type=t_type,
-            category=category,
-            description=description,
-            location=location
-        )
-
-        # Update Wallet Balance
-        amount_val = Decimal(amount)
-        if t_type == 'INCOME':
-            wallet.balance += amount_val
-        else:
-            wallet.balance -= amount_val
-        wallet.save()
-
-        messages.success(request, f"{t_type.capitalize()} added successfully.")
-        return redirect('dashboard')
+        form = TransactionForm(request.POST, user=request.user)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            messages.success(request, f"{transaction.transaction_type.capitalize()} added successfully.")
+            return redirect('dashboard')
+    else:
+        form = TransactionForm(user=request.user)
     
-    return render(request, 'cash/add_transaction.html')
+    return render(request, 'cash/add_transaction.html', {'form': form})
 
-from .forms import UserUpdateForm, ProfileUpdateForm
+@login_required
+def edit_transaction(request, pk):
+    transaction = Transaction.objects.get(pk=pk, user=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, instance=transaction, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Transaction updated successfully.")
+            return redirect('dashboard')
+    else:
+        form = TransactionForm(instance=transaction, user=request.user)
+    
+    return render(request, 'cash/edit_transaction.html', {'form': form, 'transaction': transaction})
+
+@login_required
+def delete_transaction(request, pk):
+    transaction = Transaction.objects.get(pk=pk, user=request.user)
+    if request.method == 'POST':
+        transaction.delete()
+        messages.success(request, "Transaction deleted successfully.")
+        return redirect('dashboard')
+    return render(request, 'cash/delete_confirm.html', {'transaction': transaction})
 
 @login_required
 def profile(request):

@@ -1,7 +1,8 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.db.models import Sum
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -34,6 +35,13 @@ class Wallet(models.Model):
     name = models.CharField(max_length=100)
     wallet_type = models.CharField(max_length=10, choices=WALLET_TYPES, default='CASH')
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    def update_balance(self):
+        """Recalculate balance based on transactions."""
+        income = self.transactions.filter(transaction_type='INCOME').aggregate(total=Sum('amount'))['total'] or 0
+        expense = self.transactions.filter(transaction_type='EXPENSE').aggregate(total=Sum('amount'))['total'] or 0
+        self.balance = income - expense
+        self.save()
 
     def __str__(self):
         return f"{self.name} ({self.user.username})"
@@ -74,3 +82,13 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ['-date', '-time']
+
+@receiver(post_save, sender=Transaction)
+def update_wallet_on_save(sender, instance, **kwargs):
+    if instance.wallet:
+        instance.wallet.update_balance()
+
+@receiver(post_delete, sender=Transaction)
+def update_wallet_on_delete(sender, instance, **kwargs):
+    if instance.wallet:
+        instance.wallet.update_balance()
