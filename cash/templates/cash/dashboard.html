@@ -8,57 +8,124 @@
         <h1>Overview</h1>
         <p style="color: var(--text-muted);">Welcome back, {{ user.username }}. Here's your financial status.</p>
     </div>
-    <a href="{% url 'add_transaction' %}?type=INCOME&cat=SALARY" class="btn btn-primary" style="background: var(--accent); white-space: nowrap;">
-        💰 Add This Month's Salary
-    </a>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'add_transaction' %}?type=INCOME&cat=SALARY" class="btn" style="background: rgba(16, 185, 129, 0.1); color: var(--accent); border: 1px solid rgba(16, 185, 129, 0.2);">
+            💰 Add Salary
+        </a>
+        <a href="{% url 'add_transaction' %}" class="btn btn-primary">
+            ➕ Add Transaction
+        </a>
+    </div>
+</div>
+
+<!-- Professional Filter Bar -->
+<div class="glass-card" style="margin-bottom: 2rem; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.1); background: linear-gradient(90deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4));">
+    <form method="GET" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-light);">
+                📅
+            </div>
+            <span style="font-size: 0.8125rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Time Filter</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 300px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Month</label>
+                <select name="month" style="margin-bottom: 0; padding: 0.625rem 1rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 10px; color: var(--text-main); cursor: pointer; transition: all 0.3s;">
+                    {% for m_id, m_name in months_choices %}
+                    <option value="{{ m_id }}" {% if selected_month == m_id %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Year</label>
+                <select name="year" style="margin-bottom: 0; padding: 0.625rem 1rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 10px; color: var(--text-main); cursor: pointer; transition: all 0.3s;">
+                    {% for y in years_range %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.5rem; font-size: 0.875rem; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
+                Apply Filter
+            </button>
+            <a href="{% url 'dashboard' %}" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: none; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">
+                Reset
+            </a>
+        </div>
+    </form>
 </div>
 
 <!-- Primary Stats Grid -->
 <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
     <div class="glass-card">
         <div class="stat-header">
-            <span class="stat-title">Total Balance</span>
-            <span style="font-size: 1.5rem;">💰</span>
+            <span class="stat-title">{{ balance_label }}</span>
+            <span style="font-size: 1.5rem;">🏦</span>
         </div>
-        <div class="stat-value">৳{{ current_balance }}</div>
-        <div style="font-size: 0.75rem; color: var(--accent); margin-top: 0.5rem;">↑ Available to spend</div>
+        <div class="stat-value">৳{{ display_balance }}</div>
+        <div style="font-size: 0.75rem; color: var(--accent); margin-top: 0.5rem;">{{ balance_sub }}</div>
     </div>
 
     <div class="glass-card">
         <div class="stat-header">
-            <span class="stat-title">Today's Spent</span>
+            <span class="stat-title">{{ spent_label }}</span>
             <span style="font-size: 1.5rem;">💸</span>
         </div>
-        <div class="stat-value expense-text">৳{{ today_expense }}</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Resetting at 12:00 AM</div>
+        <div class="stat-value {% if not is_current_month %}income-text{% else %}expense-text{% endif %}">৳{{ display_spent }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">{{ spent_sub }}</div>
     </div>
 
     <div class="glass-card">
         <div class="stat-header">
-            <span class="stat-title">Safe Daily Limit</span>
+            <span class="stat-title">{{ limit_label }}</span>
             <span style="font-size: 1.5rem;">📅</span>
         </div>
-        <div class="stat-value" style="color: var(--accent);">৳{{ safe_daily_limit }}</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Recommended for rest of month</div>
+        <div class="stat-value" style="color: var(--accent);">৳{{ display_limit }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">{{ limit_sub }}</div>
     </div>
 </div>
 
 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
-    <!-- Trends Section -->
-    <div class="glass-card">
-        <div class="section-title">
-            <h3>Monthly Insights</h3>
-            <div style="background: rgba(255,255,255,0.05); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;">
-                Current Month
+    <!-- Left Column: Performance & Wallets -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <!-- Performance Bar Chart -->
+        <div class="glass-card">
+            <div class="section-title">
+                <h3>Monthly Performance</h3>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Income vs. Expenses</div>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="performanceChart"></canvas>
             </div>
         </div>
-        <div style="height: 300px;">
-            <canvas id="mainChart"></canvas>
+
+        <!-- Wallets Grid -->
+        <div class="glass-card">
+            <div class="section-title">
+                <h3>My Accounts</h3>
+                <button style="background: transparent; border: none; color: var(--primary-light); cursor: pointer; font-size: 0.875rem;">+ New Wallet</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                {% for w in wallets %}
+                <div style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 1rem; border: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">{{ w.get_wallet_type_display }}</span>
+                        <span>{% if w.wallet_type == 'BANK' %}🏦{% elif w.wallet_type == 'MOBILE' %}📱{% else %}💵{% endif %}</span>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ w.name }}</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">৳{{ w.balance }}</div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
-    <!-- Budget & Categories -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Right Column: Budget & Categories -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
         <div class="glass-card">
             <h3>Budget Progress</h3>
             <div style="margin-top: 1.5rem;">
@@ -70,7 +137,7 @@
                     <div style="width: {{ budget_usage }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 1s ease-out;"></div>
                 </div>
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
-                    You've used <strong>{{ budget_usage }}%</strong> of your target budget.
+                    You've used <strong>{{ budget_usage }}%</strong> of your budget.
                 </p>
             </div>
         </div>
@@ -78,14 +145,15 @@
         <div class="glass-card">
             <h3>Top Categories</h3>
             <div style="margin-top: 1rem;">
-                {% for cat in categories_data %}
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span style="font-size: 0.875rem;">{{ cat.category|title }}</span>
-                    <span style="font-weight: 600;">৳{{ cat.total }}</span>
+                <canvas id="categoryChart" style="max-height: 180px;"></canvas>
+                <div style="margin-top: 1.5rem;">
+                    {% for cat in categories_data %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <span style="font-size: 0.8125rem;">{{ cat.category|title }}</span>
+                        <span style="font-weight: 600; font-size: 0.8125rem;">৳{{ cat.total }}</span>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% empty %}
-                <p style="color: var(--text-muted); font-size: 0.875rem; text-align: center;">No data yet</p>
-                {% endfor %}
             </div>
         </div>
     </div>
@@ -104,9 +172,9 @@
             <div class="category-icon">
                 {% if t.category == 'FOOD' %}🍔{% elif t.category == 'TRANSPORT' %}🚗{% elif t.category == 'RENT' %}🏠{% elif t.category == 'SALARY' %}💰{% else %}📦{% endif %}
             </div>
-            <div>
+            <div style="flex: 1;">
                 <div style="font-weight: 600;">{{ t.title }}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.date }} • {{ t.location|default:"No Place" }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.date }} • {{ t.wallet.name|default:"Main Cash" }}</div>
             </div>
             <div style="font-size: 0.875rem; color: var(--text-muted);">{{ t.category|title }}</div>
             <div class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}" style="font-size: 1.1rem;">
@@ -120,28 +188,56 @@
 
 {% block extra_js %}
 <script>
-    const ctx = document.getElementById('mainChart').getContext('2d');
-    const chart = new Chart(ctx, {
-        type: 'doughnut',
+    // Performance Bar Chart
+    const perfCtx = document.getElementById('performanceChart').getContext('2d');
+    new Chart(perfCtx, {
+        type: 'bar',
         data: {
-            labels: ['Income', 'Expenses'],
-            datasets: [{
-                data: [{{ total_income }}, {{ total_expense }}],
-                backgroundColor: ['#6366f1', '#f43f5e'],
-                borderColor: 'transparent',
-                hoverOffset: 4,
-                cutout: '80%'
-            }]
+            labels: {{ performance_labels|safe }},
+            datasets: [
+                {
+                    label: 'Income',
+                    data: {{ performance_income|safe }},
+                    backgroundColor: '#6366f1',
+                    borderRadius: 5,
+                },
+                {
+                    label: 'Expense',
+                    data: {{ performance_expense|safe }},
+                    backgroundColor: '#f43f5e',
+                    borderRadius: 5,
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } }
-                }
+                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } }
+            },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             }
+        }
+    });
+
+    // Simple Category Doughnut
+    const catCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(catCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for c in categories_data %}'{{ c.category|title }}',{% endfor %}],
+            datasets: [{
+                data: [{% for c in categories_data %}{{ c.total }},{% endfor %}],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899'],
+                borderColor: 'transparent',
+                cutout: '70%'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
         }
     });
 </script>

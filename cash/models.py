@@ -6,8 +6,11 @@ from django.dispatch import receiver
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
-    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    @property
+    def total_balance(self):
+        return sum(wallet.balance for wallet in self.user.wallets.all())
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
@@ -20,6 +23,20 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
+
+class Wallet(models.Model):
+    WALLET_TYPES = (
+        ('CASH', 'Cash'),
+        ('BANK', 'Bank Account'),
+        ('MOBILE', 'Mobile Banking'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wallets')
+    name = models.CharField(max_length=100)
+    wallet_type = models.CharField(max_length=10, choices=WALLET_TYPES, default='CASH')
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"{self.name} ({self.user.username})"
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = (
@@ -42,6 +59,7 @@ class Transaction(models.Model):
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
     title = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)

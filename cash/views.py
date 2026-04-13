@@ -49,9 +49,12 @@ def dashboard(request):
     profile = user.profile
     transactions = user.transactions.all()
     
-    # Filtering Logic (Basic for now)
-    month = request.GET.get('month', datetime.now().month)
-    transactions_month = transactions.filter(date__month=month)
+    # Filtering Logic
+    now = datetime.now()
+    month = int(request.GET.get('month', now.month))
+    year = int(request.GET.get('year', now.year))
+    
+    transactions_month = transactions.filter(date__month=month, date__year=year)
 
     total_income = transactions_month.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     total_expense = transactions_month.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
@@ -63,6 +66,10 @@ def dashboard(request):
     # Budget to use for progress bars: Salary if added, else fallback to Profile default
     effective_budget = monthly_salary_income if monthly_salary_income > 0 else profile.monthly_salary
 
+    # Wallets & Balance
+    wallets = user.wallets.all()
+    current_balance = user.profile.total_balance
+
     # Today's Calculations
     now = datetime.now()
     today = now.date()
@@ -70,12 +77,36 @@ def dashboard(request):
     today_expense = transactions.filter(date=today, transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     
     # Safe Daily Limit Calculation
-    _, num_days = calendar.monthrange(now.year, int(month))
-    remaining_days = num_days - now.day + 1 if int(month) == now.month else num_days
+    _, num_days = calendar.monthrange(year, month)
+    remaining_days = num_days - now.day + 1 if (month == now.month and year == now.year) else num_days
     if remaining_days < 1: remaining_days = 1
     
     remaining_budget = effective_budget - total_expense
     safe_daily_limit = max(0, remaining_budget / Decimal(remaining_days))
+    
+    # Filtered View specific data
+    is_current_month = (month == now.month and year == now.year)
+    
+    if is_current_month:
+        display_balance = current_balance
+        display_spent = today_expense
+        display_limit = safe_daily_limit
+        balance_label = "Total Combined Balance"
+        spent_label = "Today's Spent"
+        limit_label = "Safe Daily Limit"
+        balance_sub = "↑ Across all accounts"
+        spent_sub = "Resetting at 12:00 AM"
+        limit_sub = "Recommended limit"
+    else:
+        display_balance = total_income - total_expense # Monthly Savings
+        display_spent = total_income # Month's Income
+        display_limit = total_expense / Decimal(num_days) if num_days > 0 else 0
+        balance_label = "Net Monthly Savings"
+        spent_label = "Total Month Income"
+        limit_label = "Avg. Daily Spent"
+        balance_sub = "Income - Expenses"
+        spent_sub = f"For {calendar.month_name[month]}"
+        limit_sub = f"Across {num_days} days"
 
     # Financial Health Calculation
     saving_ratio = 0
@@ -93,19 +124,60 @@ def dashboard(request):
     categories_data = transactions_month.filter(transaction_type='EXPENSE').values('category').annotate(total=Sum('amount')).order_by('-total')[:3]
 
     context = {
-        'transactions': transactions[:8],
+        'transactions': transactions_month[:8],
         'total_income': total_income,
         'total_expense': total_expense,
         'today_income': today_income,
         'today_expense': today_expense,
-        'current_balance': profile.balance,
+        'current_balance': current_balance,
+        'display_balance': round(display_balance, 2),
+        'display_spent': round(display_spent, 2),
+        'display_limit': round(display_limit, 2),
+        'balance_label': balance_label,
+        'spent_label': spent_label,
+        'limit_label': limit_label,
+        'balance_sub': balance_sub,
+        'spent_sub': spent_sub,
+        'limit_sub': limit_sub,
+        'is_current_month': is_current_month,
         'health_score': round(health_score, 1),
         'budget_usage': round(budget_usage, 1),
         'effective_budget': effective_budget,
         'safe_daily_limit': round(safe_daily_limit, 2),
         'categories_data': categories_data,
-        'user': user
+        'wallets': wallets,
+        'user': user,
+        'selected_month': month,
+        'selected_year': year,
+        'months_choices': [(i, calendar.month_name[i]) for i in range(1, 13)],
+        'years_range': range(now.year - 2, now.year + 1),
     }
+    
+    # 12-Month Performance Data
+    performance_labels = []
+    performance_income = []
+    performance_expense = []
+    
+    from django.db.models.functions import ExtractMonth, ExtractYear
+    for i in range(5, -1, -1):
+        target_month = (now.month - i - 1) % 12 + 1
+        target_year = now.year if target_month <= now.month else now.year - 1
+        
+        m_name = calendar.month_name[target_month]
+        performance_labels.append(m_name[:3])
+        
+        m_data = transactions.filter(date__year=target_year, date__month=target_month)
+        m_inc = m_data.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or 0
+        m_exp = m_data.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or 0
+        performance_income.append(float(m_inc))
+        performance_expense.append(float(m_exp))
+        
+    context['performance_labels'] = performance_labels
+    performance_income[len(performance_income)-1] = float(total_income) # Use current pre-calculated
+    performance_expense[len(performance_expense)-1] = float(total_expense)
+    context['performance_income'] = performance_income
+    context['performance_expense'] = performance_expense
+
     return render(request, 'cash/dashboard.html', context)
 
 @login_required
@@ -151,6 +223,7 @@ def history(request):
 
 @login_required
 def add_transaction(request):
+    user = request.user
     if request.method == 'POST':
         title = request.POST.get('title')
         amount = request.POST.get('amount')
@@ -159,8 +232,12 @@ def add_transaction(request):
         description = request.POST.get('description')
         location = request.POST.get('location')
 
+        wallet_id = request.POST.get('wallet')
+        wallet = user.wallets.get(id=wallet_id)
+
         transaction = Transaction.objects.create(
-            user=request.user,
+            user=user,
+            wallet=wallet,
             title=title,
             amount=amount,
             transaction_type=t_type,
@@ -169,14 +246,13 @@ def add_transaction(request):
             location=location
         )
 
-        # Update Profile Balance
-        profile = request.user.profile
+        # Update Wallet Balance
         amount_val = Decimal(amount)
         if t_type == 'INCOME':
-            profile.balance += amount_val
+            wallet.balance += amount_val
         else:
-            profile.balance -= amount_val
-        profile.save()
+            wallet.balance -= amount_val
+        wallet.save()
 
         messages.success(request, f"{t_type.capitalize()} added successfully.")
         return redirect('dashboard')
