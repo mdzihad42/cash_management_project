@@ -183,41 +183,64 @@ def dashboard(request):
 @login_required
 def history(request):
     user = request.user
+    now = datetime.now()
+    
+    # 1. Get Params
+    view_mode = request.GET.get('view', 'monthly')
+    month = int(request.GET.get('month', now.month))
+    year = int(request.GET.get('year', now.year))
+    query = request.GET.get('q', '')
+
     from django.db.models.functions import ExtractMonth, ExtractYear
     
-    # Raw grouping
-    logs = user.transactions.annotate(
-        m=ExtractMonth('date'),
-        y=ExtractYear('date')
-    ).values('y', 'm').annotate(
-        inc=Sum('amount', filter=Q(transaction_type='INCOME')),
-        exp=Sum('amount', filter=Q(transaction_type='EXPENSE')),
-        sal=Sum('amount', filter=Q(transaction_type='INCOME', category='SALARY'))
-    ).order_by('-y', '-m')
-
-    # Add calculated fields
     history_data = []
-    for log in logs:
-        income = log['inc'] or Decimal(0)
-        expense = log['exp'] or Decimal(0)
-        salary = log['sal'] or Decimal(0)
-        savings = income - expense
-        rate = 0
-        if income > 0:
-            rate = (savings / income) * 100
-        
-        history_data.append({
-            'date': datetime(log['y'], log['m'], 1),
-            'income': income,
-            'expense': expense,
-            'salary': salary,
-            'savings': savings,
-            'rate': round(rate, 1)
-        })
+    transactions_list = []
+
+    if view_mode == 'monthly':
+        # Monthly Summary Logic
+        logs = user.transactions.annotate(
+            m=ExtractMonth('date'),
+            y=ExtractYear('date')
+        ).values('y', 'm').annotate(
+            inc=Sum('amount', filter=Q(transaction_type='INCOME')),
+            exp=Sum('amount', filter=Q(transaction_type='EXPENSE')),
+            sal=Sum('amount', filter=Q(transaction_type='INCOME', category='SALARY'))
+        ).order_by('-y', '-m')
+
+        for log in logs:
+            income = log['inc'] or Decimal(0)
+            expense = log['exp'] or Decimal(0)
+            salary = log['sal'] or Decimal(0)
+            savings = income - expense
+            rate = 0
+            if income > 0:
+                rate = (savings / income) * 100
+            
+            history_data.append({
+                'date': datetime(log['y'], log['m'], 1),
+                'income': income,
+                'expense': expense,
+                'salary': salary,
+                'savings': savings,
+                'rate': round(rate, 1)
+            })
+    else:
+        # Daily Transactions Logic
+        transactions_list = user.transactions.filter(date__month=month, date__year=year)
+        if query:
+            transactions_list = transactions_list.filter(Q(title__icontains=query) | Q(category__icontains=query))
+        transactions_list = transactions_list.order_by('-date', '-time')
 
     context = {
+        'view_mode': view_mode,
         'history_data': history_data,
-        'now': datetime.now()
+        'transactions_list': transactions_list,
+        'selected_month': month,
+        'selected_year': year,
+        'query': query,
+        'months_choices': [(i, calendar.month_name[i]) for i in range(1, 13)],
+        'years_range': range(now.year - 2, now.year + 1),
+        'now': now
     }
     return render(request, 'cash/history.html', context)
 

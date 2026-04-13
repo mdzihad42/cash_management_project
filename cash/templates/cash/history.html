@@ -3,77 +3,175 @@
 {% block title %}Financial History | CashFlow{% endblock %}
 
 {% block content %}
-<div class="dashboard-header" style="margin-bottom: 2rem;">
-    <h1>Financial History</h1>
-    <p style="color: var(--text-muted);">See your month-by-month performance and savings trends.</p>
+<div class="dashboard-header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>Financial History</h1>
+        <p style="color: var(--text-muted);">View your month-by-month summaries or a detailed daily statement.</p>
+    </div>
+    
+    <!-- View Toggle Segmented Control -->
+    <div style="background: rgba(15, 23, 42, 0.6); padding: 4px; border-radius: 12px; display: flex; border: 1px solid var(--border);">
+        <a href="?view=monthly" class="btn" style="padding: 0.5rem 1.25rem; font-size: 0.875rem; border-radius: 8px; {% if view_mode == 'monthly' %}background: var(--primary); color: white;{% else %}background: transparent; color: var(--text-muted);{% endif %} text-decoration: none;">
+            Monthly Summary
+        </a>
+        <a href="?view=daily" class="btn" style="padding: 0.5rem 1.25rem; font-size: 0.875rem; border-radius: 8px; {% if view_mode == 'daily' %}background: var(--primary); color: white;{% else %}background: transparent; color: var(--text-muted);{% endif %} text-decoration: none;">
+            Daily Statement
+        </a>
+    </div>
 </div>
 
-<!-- History Stats Summary -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="glass-card">
-        <div class="stat-header">
-            <span class="stat-title">Total Months Tracked</span>
-            <span>📅</span>
+<!-- History Filter Bar -->
+<div class="glass-card" style="margin-bottom: 2rem; padding: 1.25rem; background: linear-gradient(90deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4));">
+    <form method="GET" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+        <input type="hidden" name="view" value="{{ view_mode }}">
+        
+        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 300px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted);">Month</label>
+                <select name="month" style="margin-bottom: 0; padding: 0.625rem; width: 140px; background: rgba(15, 23, 42, 0.8);">
+                    {% for m_id, m_name in months_choices %}
+                    <option value="{{ m_id }}" {% if selected_month == m_id %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted);">Year</label>
+                <select name="year" style="margin-bottom: 0; padding: 0.625rem; width: 100px; background: rgba(15, 23, 42, 0.8);">
+                    {% for y in years_range %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if view_mode == 'daily' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted);">Search</label>
+                <input type="text" name="q" value="{{ query }}" placeholder="Search title or category..." style="margin-bottom: 0; padding: 0.625rem; background: rgba(15, 23, 42, 0.8);">
+            </div>
+            {% endif %}
         </div>
-        <div class="stat-value">{{ history_data|length }}</div>
-    </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.5rem; font-size: 0.875rem; border: none;">
+                Refine View
+            </button>
+            <a href="?view={{ view_mode }}" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: none;">Reset Filters</a>
+        </div>
+    </form>
 </div>
 
-<!-- History Table Card -->
+<!-- Data Display Section -->
 <div class="glass-card">
-    <div class="section-title">
-        <h3>Historical Breakdown</h3>
-        <div style="font-size: 0.8125rem; color: var(--text-muted);">Last updated: {{ now|date:"d M, Y" }}</div>
-    </div>
+    {% if view_mode == 'monthly' %}
+        <!-- Monthly Summary Table -->
+        <div class="section-title">
+            <h3>Yearly Financial Overview</h3>
+            <div style="font-size: 0.8125rem; color: var(--text-muted);">Last updated: {{ now|date:"d M, Y" }}</div>
+        </div>
 
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
-            <thead>
-                <tr style="text-align: left; border-bottom: 1px solid var(--border);">
-                    <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Month / Year</th>
-                    <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Salary Added</th>
-                    <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Total Expense</th>
-                    <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Net Savings</th>
-                    <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Savings Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in history_data %}
-                <tr class="transaction-row" style="display: table-row;">
-                    <td style="padding: 1.25rem 1rem; font-weight: 600;">
-                        {{ entry.date|date:"F Y" }}
-                    </td>
-                    <td style="padding: 1.25rem 1rem;" class="income-text">৳{{ entry.salary }}</td>
-                    <td style="padding: 1.25rem 1rem;" class="expense-text">৳{{ entry.expense }}</td>
-                    <td style="padding: 1.25rem 1rem; font-weight: 700; color: {% if entry.savings >= 0 %}var(--accent){% else %}var(--danger){% endif %};">
-                        ৳{{ entry.savings }}
-                    </td>
-                    <td style="padding: 1.25rem 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 60px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
-                                <div style="width: {{ entry.rate }}%; height: 100%; background: var(--accent);"></div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Month / Year</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Salary</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Expense</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Savings</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in history_data %}
+                    <tr class="transaction-row" style="display: table-row;">
+                        <td style="padding: 1.25rem 1rem; font-weight: 600;">{{ entry.date|date:"F Y" }}</td>
+                        <td style="padding: 1.25rem 1rem;" class="income-text">৳{{ entry.salary }}</td>
+                        <td style="padding: 1.25rem 1rem;" class="expense-text">৳{{ entry.expense }}</td>
+                        <td style="padding: 1.25rem 1rem; font-weight: 700; color: {% if entry.savings >= 0 %}var(--accent){% else %}var(--danger){% endif %};">
+                            ৳{{ entry.savings }}
+                        </td>
+                        <td style="padding: 1.25rem 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 60px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div style="width: {{ entry.rate }}%; height: 100%; background: var(--accent);"></div>
+                                </div>
+                                <span style="font-size: 0.75rem;">{{ entry.rate }}%</span>
                             </div>
-                            <span style="font-size: 0.75rem;">{{ entry.rate }}%</span>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-muted);">
-                        No history data available yet. Add some transactions to see your performance!
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-muted);">No logs yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% else %}
+        <!-- Daily Statement Table -->
+        <div class="section-title">
+            <h3>Transaction Statement — {{ selected_month|add:"0" }}-{{ selected_year }}</h3>
+            <div style="font-size: 0.8125rem; color: var(--text-muted);">Showing {{ transactions_list|length }} transactions</div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Date</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Transaction</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Account</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Category</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 500;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions_list %}
+                    {% ifchanged t.date %}
+                    <tr style="background: rgba(255,255,255,0.02);">
+                        <td colspan="5" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 700; color: var(--primary-light); font-size: 0.9rem;">
+                                    📅 {{ t.date|date:"l, d F Y" }}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endifchanged %}
+                    <tr class="transaction-row" style="display: table-row;">
+                        <td style="padding: 1rem; width: 80px;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.time|time:"H:i" }}</div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <div style="font-weight: 600;">{{ t.title }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.location|default:"-" }}</div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <span style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                {{ t.wallet.name }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; font-size: 0.8125rem;">{{ t.category|title }}</td>
+                        <td style="padding: 1rem;" class="stat-value {% if t.transaction_type == 'INCOME' %}income-text{% else %}expense-text{% endif %}">
+                            {% if t.transaction_type == 'INCOME' %}+{% else %}-{% endif %}৳{{ t.amount }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-muted);">No transactions found for this period.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 </div>
 
 <div class="glass-card" style="margin-top: 2rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent);">
-    <h3>Pro Analytics Tip 💡</h3>
+    <h3>Did you know? 💡</h3>
     <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 1rem;">
-        Keep your **Savings Rate** above **20%** to build a strong financial safety net. 
-        Your highest saving month helps us calculate your personalized financial health score!
+        {% if view_mode == 'monthly' %}
+            The Monthly Summary helps you identify seasonal spending trends and your average saving performance across years.
+        {% else %}
+            The Daily Statement view is perfect for auditing your actual spending day-by-day and spotting small recurring leaks.
+        {% endif %}
     </p>
 </div>
 {% endblock %}
