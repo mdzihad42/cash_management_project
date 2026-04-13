@@ -8,83 +8,84 @@
     <p style="color: var(--text-muted);">Manage your personal details and financial goals.</p>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
-    <!-- Left Column: User Card -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-        <div class="glass-card" style="text-align: center;">
-            <div style="width: 100px; height: 100px; background: linear-gradient(45deg, var(--primary), var(--primary-light)); border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: white;">
-                {{ user.username|first|upper }}
-            </div>
-            <h2 style="margin-bottom: 0.5rem;">{{ user.username }}</h2>
-            <p style="color: var(--text-muted); font-size: 0.875rem;">Member since {{ joined_date|date:"F Y" }}</p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-                <div>
-                    <div style="font-size: 1.25rem; font-weight: 700;">{{ transactions_count }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Transactions</div>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+        <!-- Left Column: User Card & Pic -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="glass-card" style="text-align: center;">
+                <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 1.5rem;">
+                    {% if user.profile.profile_pic %}
+                        <img src="{{ user.profile.profile_pic.url }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);">
+                    {% else %}
+                        <div style="width: 100%; height: 100%; background: linear-gradient(45deg, var(--primary), var(--primary-light)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 700; color: white;">
+                            {{ user.username|first|upper }}
+                        </div>
+                    {% endif %}
                 </div>
-                <div>
-                    <div style="font-size: 1.25rem; font-weight: 700;">৳{{ profile.balance }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Net Balance</div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="id_profile_pic" class="btn" style="border: 1px solid var(--border); background: rgba(255,255,255,0.05); cursor: pointer; display: inline-flex; width: auto;">
+                        📷 Upload Photo
+                    </label>
+                    <div style="display: none;">{{ p_form.profile_pic }}</div>
+                </div>
+
+                <h2 style="margin-bottom: 0.5rem;">{{ user.username }}</h2>
+                <p style="color: var(--text-muted); font-size: 0.875rem;">Member since {{ joined_date|date:"F Y" }}</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                    <div>
+                        <div style="font-size: 1.25rem; font-weight: 700;">{{ transactions_count }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Transactions</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.25rem; font-weight: 700;">৳{{ user.profile.balance }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Net Balance</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="glass-card">
-            <h3>Account Security</h3>
-            <p style="font-size: 0.8125rem; color: var(--text-muted); margin: 1rem 0;">Update your access credentials and privacy settings.</p>
-            <button class="btn" style="width: 100%; border: 1px solid var(--border); background: transparent; color: white; justify-content: center;">Change Password</button>
-        </div>
-    </div>
-
-    <!-- Right Column: Settings Form -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-        <div class="glass-card">
-            <h3 style="margin-bottom: 1.5rem;">General Settings</h3>
-            <form method="POST">
-                {% csrf_token %}
+        <!-- Right Column: Settings Form -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem;">General Settings</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
-                        <label>Display Name</label>
-                        <input type="text" value="{{ user.username }}" disabled style="opacity: 0.6; cursor: not-allowed;">
+                        <label>Username</label>
+                        {{ u_form.username }}
                     </div>
                     <div>
                         <label>Email Address</label>
-                        <input type="email" value="{{ user.email|default:'not set' }}" disabled style="opacity: 0.6; cursor: not-allowed;">
+                        {{ u_form.email }}
                     </div>
                 </div>
 
-                <div style="margin-top: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div>
+                        <label>First Name</label>
+                        {{ u_form.first_name }}
+                    </div>
+                    <div>
+                        <label>Last Name</label>
+                        {{ u_form.last_name }}
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
                     <label>Monthly Salary Target (৳)</label>
-                    <input type="number" step="0.01" name="monthly_salary" value="{{ profile.monthly_salary }}" style="background: rgba(255,255,255,0.05);">
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 2rem;">
+                    {{ p_form.monthly_salary }}
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 1rem;">
                         This value is used to calculate your "Budget Progress" on the dashboard.
                     </p>
                 </div>
 
-                <div style="display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--border);">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div style="display: flex; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    <button type="submit" class="btn btn-primary">Save All Changes</button>
                 </div>
-            </form>
-        </div>
-
-        <div class="glass-card">
-            <h3 style="margin-bottom: 1.5rem;">Financial Report Settings</h3>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.875rem;">Daily Summary Email</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Receive your daily spending report at 12:00 AM.</div>
-                </div>
-                <div style="width: 40px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.875rem;">Budget Alerts</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Notify when spending exceeds 80% of salary.</div>
-                </div>
-                <div style="width: 40px; height: 20px; background: var(--primary); border-radius: 10px; cursor: pointer;"></div>
             </div>
         </div>
     </div>
-</div>
+</form>
 {% endblock %}

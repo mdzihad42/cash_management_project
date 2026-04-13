@@ -122,22 +122,31 @@ def add_transaction(request):
     
     return render(request, 'cash/add_transaction.html')
 
+from .forms import UserUpdateForm, ProfileUpdateForm
+
 @login_required
 def profile(request):
     user = request.user
     profile = user.profile
-    transactions_count = user.transactions.count()
     
     if request.method == 'POST':
-        salary = request.POST.get('monthly_salary')
-        profile.monthly_salary = Decimal(salary)
-        profile.save()
-        messages.success(request, "Profile updated successfully.")
-        return redirect('profile')
+        u_form = UserUpdateForm(request.POST, instance=user)
+        p_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
+        
+        if u_form.is_valid() and p_form.is_valid():
+            u_form.save()
+            p_form.save()
+            messages.success(request, "Your profile has been updated!")
+            return redirect('profile')
+    else:
+        u_form = UserUpdateForm(instance=user)
+        p_form = ProfileUpdateForm(instance=profile)
+    
+    transactions_count = user.transactions.count()
     
     context = {
-        'user': user,
-        'profile': profile,
+        'u_form': u_form,
+        'p_form': p_form,
         'transactions_count': transactions_count,
         'joined_date': user.date_joined,
     }

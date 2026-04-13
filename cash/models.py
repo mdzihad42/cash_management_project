@@ -5,6 +5,7 @@ from django.dispatch import receiver
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 

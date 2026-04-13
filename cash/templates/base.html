@@ -18,7 +18,11 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <div class="logo-icon"></div>
+                {% if user.profile.profile_pic %}
+                    <img src="{{ user.profile.profile_pic.url }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 10px;">
+                {% else %}
+                    <div class="logo-icon"></div>
+                {% endif %}
                 <h2 class="logo-text">CashFlow</h2>
             </div>
             
