@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Loan Record - CashFlow{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 4rem auto;">
+    <div class="glass-card" style="text-align: center; border: 1px solid rgba(244, 63, 94, 0.2);">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+        <h2 style="margin-bottom: 0.5rem;">Delete This Record?</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">This action cannot be undone.</p>
+        
+        <div style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 1rem; margin-bottom: 2rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="color: var(--text-muted);">Person</span>
+                <span style="font-weight: 600;">{{ loan.person_name }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="color: var(--text-muted);">Type</span>
+                <span style="font-weight: 600;">{% if loan.loan_type == 'PAONA' %}পাওনা{% else %}দেনা{% endif %}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="color: var(--text-muted);">Amount</span>
+                <span style="font-weight: 600;">৳{{ loan.amount }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Paid</span>
+                <span style="font-weight: 600;">৳{{ loan.paid_amount }}</span>
+            </div>
+        </div>
+
+        <form method="POST" style="display: flex; gap: 1rem; justify-content: center;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: var(--danger); color: white; border: 1px solid transparent;">🗑️ Yes, Delete</button>
+            <a href="{% url 'loan_list' %}" class="btn" style="border: 1px solid var(--border); background: transparent; color: white;">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

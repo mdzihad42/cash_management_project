@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Loans & Debts - দেনা পাওনা | CashFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>🤝 দেনা পাওনা Tracker</h1>
+        <p style="color: var(--text-muted);">Track your loans given and debts owed — never forget who owes what.</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'add_loan' %}?type=PAONA" class="btn" style="background: rgba(16, 185, 129, 0.1); color: var(--accent); border: 1px solid rgba(16, 185, 129, 0.2);">
+            💰 Add পাওনা
+        </a>
+        <a href="{% url 'add_loan' %}?type=DENA" class="btn btn-primary">
+            📝 Add দেনা
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Paona Card -->
+    <div class="glass-card" style="border-left: 4px solid var(--accent);">
+        <div class="stat-header">
+            <span class="stat-title">পাওনা (To Receive)</span>
+            <span style="font-size: 1.5rem;">💰</span>
+        </div>
+        <div class="stat-value" style="color: var(--accent);">৳{{ paona_remaining }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Others owe you</div>
+    </div>
+
+    <!-- Dena Card -->
+    <div class="glass-card" style="border-left: 4px solid var(--danger);">
+        <div class="stat-header">
+            <span class="stat-title">দেনা (To Pay)</span>
+            <span style="font-size: 1.5rem;">💸</span>
+        </div>
+        <div class="stat-value" style="color: var(--danger);">৳{{ dena_remaining }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">You owe others</div>
+    </div>
+
+    <!-- Net Balance Card -->
+    <div class="glass-card" style="border-left: 4px solid var(--primary);">
+        <div class="stat-header">
+            <span class="stat-title">Net Balance</span>
+            <span style="font-size: 1.5rem;">⚖️</span>
+        </div>
+        <div class="stat-value" style="color: {% if net_balance >= 0 %}var(--accent){% else %}var(--danger){% endif %};">
+            {% if net_balance >= 0 %}+{% endif %}৳{{ net_balance }}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+            {% if net_balance >= 0 %}You are owed more{% else %}You owe more{% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Card -->
+    <div class="glass-card" style="border-left: 4px solid #f59e0b;">
+        <div class="stat-header">
+            <span class="stat-title">Overview</span>
+            <span style="font-size: 1.5rem;">📊</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                <span style="color: var(--text-muted);">Active</span>
+                <span style="font-weight: 600;">{{ total_active }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                <span style="color: var(--text-muted);">Settled</span>
+                <span style="font-weight: 600; color: var(--accent);">{{ total_settled }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                <span style="color: var(--text-muted);">Overdue</span>
+                <span style="font-weight: 600; color: {% if overdue_count > 0 %}var(--danger){% else %}var(--accent){% endif %};">{{ overdue_count }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="glass-card" style="margin-bottom: 2rem; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.1); background: linear-gradient(90deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4));">
+    <form method="GET" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-light);">
+                🔍
+            </div>
+            <span style="font-size: 0.8125rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Filters</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 300px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Type</label>
+                <select name="type" style="margin-bottom: 0; padding: 0.625rem 1rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 10px; color: var(--text-main); cursor: pointer;">
+                    <option value="ALL" {% if filter_type == 'ALL' %}selected{% endif %}>All Types</option>
+                    <option value="PAONA" {% if filter_type == 'PAONA' %}selected{% endif %}>পাওনা (Lent)</option>
+                    <option value="DENA" {% if filter_type == 'DENA' %}selected{% endif %}>দেনা (Borrowed)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label style="margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Status</label>
+                <select name="status" style="margin-bottom: 0; padding: 0.625rem 1rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 10px; color: var(--text-main); cursor: pointer;">
+                    <option value="ALL" {% if filter_status == 'ALL' %}selected{% endif %}>All Status</option>
+                    <option value="ACTIVE" {% if filter_status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="PARTIALLY_PAID" {% if filter_status == 'PARTIALLY_PAID' %}selected{% endif %}>Partially Paid</option>
+                    <option value="PAID" {% if filter_status == 'PAID' %}selected{% endif %}>Settled</option>
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <input type="text" name="q" value="{{ query }}" placeholder="Search by person name..." style="margin-bottom: 0; padding: 0.625rem 1rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 10px;">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.5rem; font-size: 0.875rem; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none;">
+                Apply
+            </button>
+            <a href="{% url 'loan_list' %}" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: none; font-weight: 500;">
+                Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Loans List -->
+<div class="glass-card">
+    <div class="section-title">
+        <h3>📋 Records</h3>
+        <span style="font-size: 0.8125rem; color: var(--text-muted);">{{ loans|length }} entries found</span>
+    </div>
+
+    {% if loans %}
+    <div class="transaction-list">
+        {% for loan in loans %}
+        <div class="transaction-row" style="grid-template-columns: auto 1fr auto auto auto; position: relative; {% if loan.is_overdue %}border-left: 3px solid var(--danger);{% endif %}">
+            <!-- Icon -->
+            <div class="category-icon" style="background: {% if loan.loan_type == 'PAONA' %}rgba(16, 185, 129, 0.1){% else %}rgba(244, 63, 94, 0.1){% endif %};">
+                {% if loan.loan_type == 'PAONA' %}📥{% else %}📤{% endif %}
+            </div>
+
+            <!-- Details -->
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">
+                    <span style="font-weight: 600; font-size: 1rem;">{{ loan.person_name }}</span>
+                    {% if loan.loan_type == 'PAONA' %}
+                    <span style="font-size: 0.6875rem; background: rgba(16, 185, 129, 0.15); color: var(--accent); padding: 0.15rem 0.6rem; border-radius: 20px; font-weight: 600;">পাওনা</span>
+                    {% else %}
+                    <span style="font-size: 0.6875rem; background: rgba(244, 63, 94, 0.15); color: var(--danger); padding: 0.15rem 0.6rem; border-radius: 20px; font-weight: 600;">দেনা</span>
+                    {% endif %}
+                    {% if loan.is_overdue %}
+                    <span style="font-size: 0.6875rem; background: rgba(244, 63, 94, 0.2); color: #ff6b6b; padding: 0.15rem 0.6rem; border-radius: 20px; font-weight: 600; animation: pulse 2s infinite;">⚠️ OVERDUE</span>
+                    {% endif %}
+                    {% if loan.status == 'PAID' %}
+                    <span style="font-size: 0.6875rem; background: rgba(16, 185, 129, 0.2); color: var(--accent); padding: 0.15rem 0.6rem; border-radius: 20px; font-weight: 600;">✅ SETTLED</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <span>📅 {{ loan.created_at|date:"d M Y" }}</span>
+                    {% if loan.due_date %}<span>⏰ Due: {{ loan.due_date|date:"d M Y" }}</span>{% endif %}
+                    {% if loan.phone %}<span>📞 {{ loan.phone }}</span>{% endif %}
+                    {% if loan.description %}<span>📝 {{ loan.description|truncatewords:8 }}</span>{% endif %}
+                </div>
+                <!-- Progress Bar -->
+                {% if loan.status != 'PAID' and loan.paid_amount > 0 %}
+                <div style="margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="font-size: 0.6875rem; color: var(--text-muted);">Paid: ৳{{ loan.paid_amount }}</span>
+                        <span style="font-size: 0.6875rem; color: var(--text-muted);">{{ loan.progress_percent|floatformat:0 }}%</span>
+                    </div>
+                    <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                        <div style="width: {{ loan.progress_percent }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 3px; transition: width 0.5s ease-out;"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Amount -->
+            <div style="text-align: right; min-width: 120px;">
+                <div style="font-size: 1.25rem; font-weight: 700; font-family: 'Outfit'; color: {% if loan.loan_type == 'PAONA' %}var(--accent){% else %}var(--danger){% endif %};">
+                    ৳{{ loan.amount }}
+                </div>
+                {% if loan.remaining_amount > 0 and loan.status != 'PAID' %}
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    Remaining: ৳{{ loan.remaining_amount }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 0.5rem; margin-left: 0.5rem;">
+                {% if loan.status != 'PAID' %}
+                <a href="{% url 'make_payment' loan.pk %}" style="text-decoration: none; font-size: 0.8125rem; background: rgba(16, 185, 129, 0.1); color: var(--accent); padding: 0.4rem 0.75rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); transition: all 0.2s;" title="Record Payment"
+                   onmouseover="this.style.background='rgba(16, 185, 129, 0.2)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'">
+                    💵 Pay
+                </a>
+                {% endif %}
+                <a href="{% url 'delete_loan' loan.pk %}" style="text-decoration: none; font-size: 1rem; padding: 0.4rem; border-radius: 8px; transition: all 0.2s;" title="Delete"
+                   onmouseover="this.style.background='rgba(244,63,94,0.1)'" onmouseout="this.style.background='transparent'">
+                    🗑️
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">🤝</div>
+        <h3 style="color: var(--text-muted); font-weight: 400;">No records found</h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Start tracking your debts and loans by adding a new entry.</p>
+        <a href="{% url 'add_loan' %}" class="btn btn-primary" style="margin-top: 1.5rem;">➕ Add New Entry</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}

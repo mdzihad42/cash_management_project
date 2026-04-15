@@ -11,4 +11,9 @@ urlpatterns = [
     path('delete-transaction/<int:pk>/', views.delete_transaction, name='delete_transaction'),
     path('history/', views.history, name='history'),
     path('profile/', views.profile, name='profile'),
+    # Loan / Debt Tracker
+    path('loans/', views.loan_list, name='loan_list'),
+    path('add-loan/', views.add_loan, name='add_loan'),
+    path('pay-loan/<int:pk>/', views.make_payment, name='make_payment'),
+    path('delete-loan/<int:pk>/', views.delete_loan, name='delete_loan'),
 ]

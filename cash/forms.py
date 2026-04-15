@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Profile, Transaction
+from .models import Profile, Transaction, Loan
 
 class UserUpdateForm(forms.ModelForm):
     email = forms.EmailField()
@@ -27,3 +27,20 @@ class TransactionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields['wallet'].queryset = user.wallets.all()
+
+
+class LoanForm(forms.ModelForm):
+    class Meta:
+        model = Loan
+        fields = ['person_name', 'phone', 'amount', 'loan_type', 'description', 'due_date']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'due_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+
+class LoanPaymentForm(forms.Form):
+    payment_amount = forms.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0.01,
+        widget=forms.NumberInput(attrs={'placeholder': 'Enter payment amount'})
+    )

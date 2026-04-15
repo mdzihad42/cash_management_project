@@ -1,10 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views import View
-from .models import Transaction, Profile
+from .models import Transaction, Profile, Loan
 from django.db import models
 from django.db.models import Sum, Q
 from datetime import datetime
@@ -60,10 +60,7 @@ def dashboard(request):
     total_expense = transactions_month.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
     
     # Dynamic Salary Budget
-    # Check for INCOME transactions in SALARY category for this month
     monthly_salary_income = transactions_month.filter(transaction_type='INCOME', category='SALARY').aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
-    
-    # Budget to use for progress bars: Salary if added, else fallback to Profile default
     effective_budget = monthly_salary_income if monthly_salary_income > 0 else profile.monthly_salary
 
     # Wallets & Balance
@@ -98,8 +95,8 @@ def dashboard(request):
         spent_sub = "Resetting at 12:00 AM"
         limit_sub = "Recommended limit"
     else:
-        display_balance = total_income - total_expense # Monthly Savings
-        display_spent = total_income # Month's Income
+        display_balance = total_income - total_expense
+        display_spent = total_income
         display_limit = total_expense / Decimal(num_days) if num_days > 0 else 0
         balance_label = "Net Monthly Savings"
         spent_label = "Total Month Income"
@@ -113,7 +110,7 @@ def dashboard(request):
     if total_income > 0:
         saving_ratio = ((total_income - total_expense) / total_income) * 100
     
-    health_score = max(0, min(100, saving_ratio)) # Simple score based on savings %
+    health_score = max(0, min(100, saving_ratio))
 
     # Budget Progress
     budget_usage = 0
@@ -173,7 +170,7 @@ def dashboard(request):
         performance_expense.append(float(m_exp))
         
     context['performance_labels'] = performance_labels
-    performance_income[len(performance_income)-1] = float(total_income) # Use current pre-calculated
+    performance_income[len(performance_income)-1] = float(total_income)
     performance_expense[len(performance_expense)-1] = float(total_expense)
     context['performance_income'] = performance_income
     context['performance_expense'] = performance_expense
@@ -185,7 +182,6 @@ def history(request):
     user = request.user
     now = datetime.now()
     
-    # 1. Get Params
     view_mode = request.GET.get('view', 'monthly')
     month = int(request.GET.get('month', now.month))
     year = int(request.GET.get('year', now.year))
@@ -197,7 +193,6 @@ def history(request):
     transactions_list = []
 
     if view_mode == 'monthly':
-        # Monthly Summary Logic
         logs = user.transactions.annotate(
             m=ExtractMonth('date'),
             y=ExtractYear('date')
@@ -225,7 +220,6 @@ def history(request):
                 'rate': round(rate, 1)
             })
     else:
-        # Daily Transactions Logic
         transactions_list = user.transactions.filter(date__month=month, date__year=year)
         if query:
             transactions_list = transactions_list.filter(Q(title__icontains=query) | Q(category__icontains=query))
@@ -244,7 +238,7 @@ def history(request):
     }
     return render(request, 'cash/history.html', context)
 
-from .forms import UserUpdateForm, ProfileUpdateForm, TransactionForm
+from .forms import UserUpdateForm, ProfileUpdateForm, TransactionForm, LoanForm, LoanPaymentForm
 
 @login_required
 def add_transaction(request):
@@ -311,3 +305,112 @@ def profile(request):
         'joined_date': user.date_joined,
     }
     return render(request, 'cash/profile.html', context)
+
+
+# ========== LOAN / DEBT TRACKER VIEWS ==========
+
+@login_required
+def loan_list(request):
+    user = request.user
+    loans = user.loans.all()
+
+    # Filters
+    filter_type = request.GET.get('type', 'ALL')
+    filter_status = request.GET.get('status', 'ACTIVE')
+    query = request.GET.get('q', '')
+
+    if filter_type != 'ALL':
+        loans = loans.filter(loan_type=filter_type)
+    if filter_status != 'ALL':
+        loans = loans.filter(status=filter_status)
+    if query:
+        loans = loans.filter(Q(person_name__icontains=query) | Q(description__icontains=query))
+
+    # Summary stats
+    active_loans = user.loans.exclude(status='PAID')
+    total_paona = active_loans.filter(loan_type='PAONA').aggregate(
+        total=Sum('amount'), paid=Sum('paid_amount')
+    )
+    total_dena = active_loans.filter(loan_type='DENA').aggregate(
+        total=Sum('amount'), paid=Sum('paid_amount')
+    )
+
+    paona_total = total_paona['total'] or Decimal(0)
+    paona_paid = total_paona['paid'] or Decimal(0)
+    dena_total = total_dena['total'] or Decimal(0)
+    dena_paid = total_dena['paid'] or Decimal(0)
+
+    net_balance = (paona_total - paona_paid) - (dena_total - dena_paid)
+
+    # Overdue count
+    from datetime import date
+    overdue_count = active_loans.filter(due_date__lt=date.today()).count()
+
+    context = {
+        'loans': loans,
+        'filter_type': filter_type,
+        'filter_status': filter_status,
+        'query': query,
+        'paona_remaining': paona_total - paona_paid,
+        'dena_remaining': dena_total - dena_paid,
+        'net_balance': net_balance,
+        'overdue_count': overdue_count,
+        'total_active': active_loans.count(),
+        'total_settled': user.loans.filter(status='PAID').count(),
+    }
+    return render(request, 'cash/loans.html', context)
+
+
+@login_required
+def add_loan(request):
+    if request.method == 'POST':
+        form = LoanForm(request.POST)
+        if form.is_valid():
+            loan = form.save(commit=False)
+            loan.user = request.user
+            loan.save()
+            type_label = "পাওনা (Loan Given)" if loan.loan_type == 'PAONA' else "দেনা (Debt Taken)"
+            messages.success(request, f"{type_label} of ৳{loan.amount} to {loan.person_name} added.")
+            return redirect('loan_list')
+    else:
+        form = LoanForm()
+
+    return render(request, 'cash/add_loan.html', {'form': form})
+
+
+@login_required
+def make_payment(request, pk):
+    loan = get_object_or_404(Loan, pk=pk, user=request.user)
+
+    if request.method == 'POST':
+        form = LoanPaymentForm(request.POST)
+        if form.is_valid():
+            payment = form.cleaned_data['payment_amount']
+            remaining = loan.remaining_amount
+
+            if payment > remaining:
+                messages.error(request, f"Payment ৳{payment} exceeds remaining amount ৳{remaining}.")
+            else:
+                loan.paid_amount += payment
+                if loan.paid_amount >= loan.amount:
+                    loan.status = 'PAID'
+                else:
+                    loan.status = 'PARTIALLY_PAID'
+                loan.save()
+                messages.success(request, f"৳{payment} payment recorded for {loan.person_name}.")
+                return redirect('loan_list')
+    else:
+        form = LoanPaymentForm()
+
+    return render(request, 'cash/make_payment.html', {'form': form, 'loan': loan})
+
+
+@login_required
+def delete_loan(request, pk):
+    loan = get_object_or_404(Loan, pk=pk, user=request.user)
+    if request.method == 'POST':
+        person = loan.person_name
+        loan.delete()
+        messages.success(request, f"Record for {person} has been deleted.")
+        return redirect('loan_list')
+    return render(request, 'cash/delete_loan.html', {'loan': loan})

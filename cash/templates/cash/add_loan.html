@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Loan / Debt - CashFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <h1>📝 Add New দেনা / পাওনা</h1>
+    <p style="color: var(--text-muted);">Record a new loan given or debt taken to keep your records clean.</p>
+</div>
+
+<div style="max-width: 700px;">
+    <div class="glass-card">
+        <form method="POST">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div style="background: rgba(255, 0, 0, 0.1); border-left: 4px solid var(--danger); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <p style="color: var(--danger); margin: 0;">{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Type Selection -->
+            <div style="margin-bottom: 2rem;">
+                <label style="margin-bottom: 0.75rem;">Select Type</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <label style="cursor: pointer; margin-bottom: 0;">
+                        <input type="radio" name="loan_type" value="PAONA" style="display: none;" {% if form.loan_type.value == 'PAONA' or request.GET.type == 'PAONA' %}checked{% endif %} id="type_paona">
+                        <div class="type-card" id="card_paona" style="padding: 1.25rem; border-radius: 1rem; border: 2px solid var(--border); text-align: center; transition: all 0.3s; background: rgba(255,255,255,0.02);">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">💰</div>
+                            <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">পাওনা</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">I Lent / Others Owe Me</div>
+                        </div>
+                    </label>
+                    <label style="cursor: pointer; margin-bottom: 0;">
+                        <input type="radio" name="loan_type" value="DENA" style="display: none;" {% if form.loan_type.value == 'DENA' or request.GET.type == 'DENA' %}checked{% endif %} id="type_dena">
+                        <div class="type-card" id="card_dena" style="padding: 1.25rem; border-radius: 1rem; border: 2px solid var(--border); text-align: center; transition: all 0.3s; background: rgba(255,255,255,0.02);">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📤</div>
+                            <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">দেনা</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">I Borrowed / I Owe Others</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label>Person Name *</label>
+                {{ form.person_name }}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label>Amount (৳) *</label>
+                    {{ form.amount }}
+                </div>
+                <div>
+                    <label>Phone Number (Optional)</label>
+                    {{ form.phone }}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label>Due Date (Optional)</label>
+                {{ form.due_date }}
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <label>Description / Notes (Optional)</label>
+                {{ form.description }}
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-primary">💾 Save Record</button>
+                <a href="{% url 'loan_list' %}" class="btn" style="border: 1px solid var(--border); background: transparent; color: white;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateCardStyles() {
+        const paona = document.getElementById('type_paona');
+        const dena = document.getElementById('type_dena');
+        const cardP = document.getElementById('card_paona');
+        const cardD = document.getElementById('card_dena');
+
+        if (paona.checked) {
+            cardP.style.borderColor = '#10b981';
+            cardP.style.background = 'rgba(16, 185, 129, 0.1)';
+            cardP.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.1)';
+            cardD.style.borderColor = 'var(--border)';
+            cardD.style.background = 'rgba(255,255,255,0.02)';
+            cardD.style.boxShadow = 'none';
+        } else if (dena.checked) {
+            cardD.style.borderColor = '#f43f5e';
+            cardD.style.background = 'rgba(244, 63, 94, 0.1)';
+            cardD.style.boxShadow = '0 0 20px rgba(244, 63, 94, 0.1)';
+            cardP.style.borderColor = 'var(--border)';
+            cardP.style.background = 'rgba(255,255,255,0.02)';
+            cardP.style.boxShadow = 'none';
+        }
+    }
+
+    document.querySelectorAll('input[name="loan_type"]').forEach(el => {
+        el.addEventListener('change', updateCardStyles);
+    });
+
+    // Initialize on page load
+    updateCardStyles();
+</script>
+{% endblock %}

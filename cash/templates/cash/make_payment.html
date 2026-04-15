@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Payment - CashFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <h1>💵 Record Payment</h1>
+    <p style="color: var(--text-muted);">Record a payment for this {{ loan.get_loan_type_display }}.</p>
+</div>
+
+<div style="max-width: 600px;">
+    <!-- Loan Summary Card -->
+    <div class="glass-card" style="margin-bottom: 1.5rem; border-left: 4px solid {% if loan.loan_type == 'PAONA' %}var(--accent){% else %}var(--danger){% endif %};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <h3 style="margin-bottom: 0.25rem;">{{ loan.person_name }}</h3>
+                <span style="font-size: 0.75rem; background: {% if loan.loan_type == 'PAONA' %}rgba(16, 185, 129, 0.15){% else %}rgba(244, 63, 94, 0.15){% endif %}; color: {% if loan.loan_type == 'PAONA' %}var(--accent){% else %}var(--danger){% endif %}; padding: 0.2rem 0.75rem; border-radius: 20px; font-weight: 600;">
+                    {% if loan.loan_type == 'PAONA' %}পাওনা{% else %}দেনা{% endif %}
+                </span>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Total Amount</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit';">৳{{ loan.amount }}</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <div style="text-align: center;">
+                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Already Paid</div>
+                <div style="font-weight: 600; color: var(--accent);">৳{{ loan.paid_amount }}</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Remaining</div>
+                <div style="font-weight: 600; color: var(--danger);">৳{{ loan.remaining_amount }}</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Progress</div>
+                <div style="font-weight: 600; color: var(--primary-light);">{{ loan.progress_percent|floatformat:0 }}%</div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div style="margin-top: 1rem;">
+            <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden;">
+                <div style="width: {{ loan.progress_percent }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.5s ease-out;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Form -->
+    <div class="glass-card">
+        <h3 style="margin-bottom: 1.5rem;">Enter Payment Amount</h3>
+        <form method="POST">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div style="background: rgba(255, 0, 0, 0.1); border-left: 4px solid var(--danger); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <p style="color: var(--danger); margin: 0;">{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 1.5rem;">
+                <label>Payment Amount (৳)</label>
+                {{ form.payment_amount }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Max: ৳{{ loan.remaining_amount }} — Enter full amount to settle completely.
+                </div>
+            </div>
+
+            <!-- Quick Amount Buttons -->
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <button type="button" class="btn" style="border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-main); font-size: 0.8125rem; padding: 0.5rem 1rem;" onclick="document.getElementById('id_payment_amount').value='{{ loan.remaining_amount }}'">
+                    Full Amount (৳{{ loan.remaining_amount }})
+                </button>
+                {% if loan.remaining_amount > 100 %}
+                <button type="button" class="btn" style="border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-main); font-size: 0.8125rem; padding: 0.5rem 1rem;" onclick="document.getElementById('id_payment_amount').value='100'">
+                    ৳100
+                </button>
+                {% endif %}
+                {% if loan.remaining_amount > 500 %}
+                <button type="button" class="btn" style="border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-main); font-size: 0.8125rem; padding: 0.5rem 1rem;" onclick="document.getElementById('id_payment_amount').value='500'">
+                    ৳500
+                </button>
+                {% endif %}
+                {% if loan.remaining_amount > 1000 %}
+                <button type="button" class="btn" style="border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-main); font-size: 0.8125rem; padding: 0.5rem 1rem;" onclick="document.getElementById('id_payment_amount').value='1000'">
+                    ৳1000
+                </button>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-primary">✅ Record Payment</button>
+                <a href="{% url 'loan_list' %}" class="btn" style="border: 1px solid var(--border); background: transparent; color: white;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

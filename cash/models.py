@@ -92,3 +92,50 @@ def update_wallet_on_save(sender, instance, **kwargs):
 def update_wallet_on_delete(sender, instance, **kwargs):
     if instance.wallet:
         instance.wallet.update_balance()
+
+
+class Loan(models.Model):
+    LOAN_TYPES = (
+        ('PAONA', 'পাওনা (I Lent / Others Owe Me)'),
+        ('DENA', 'দেনা (I Borrowed / I Owe Others)'),
+    )
+    STATUS_CHOICES = (
+        ('ACTIVE', 'Active'),
+        ('PARTIALLY_PAID', 'Partially Paid'),
+        ('PAID', 'Paid / Settled'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='loans')
+    person_name = models.CharField(max_length=150, help_text="Name of the person")
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    loan_type = models.CharField(max_length=10, choices=LOAN_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    description = models.TextField(blank=True, null=True)
+    due_date = models.DateField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def remaining_amount(self):
+        return self.amount - self.paid_amount
+
+    @property
+    def progress_percent(self):
+        if self.amount > 0:
+            return min(100, (self.paid_amount / self.amount) * 100)
+        return 0
+
+    @property
+    def is_overdue(self):
+        from datetime import date
+        if self.due_date and self.status != 'PAID':
+            return date.today() > self.due_date
+        return False
+
+    def __str__(self):
+        return f"{self.get_loan_type_display()} - {self.person_name}: ৳{self.amount}"
+
+    class Meta:
+        ordering = ['-created_at']
